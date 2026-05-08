@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen TTS Studio</title>
+  <script>
+    // file://-Aufruf funktioniert nicht (PHP/CORS). Weiterleitung auf HTTP.
+    if (location.protocol === 'file:') {
+      location.replace('http://localhost/tts/');
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">◉</span>
+      <span class="logo-text">QWEN TTS <em>STUDIO</em></span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="btnHelp" title="Anleitung">?</button>
+      <button class="btn-icon" id="btnSettings" title="Einstellungen">⚙</button>
+    </div>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- ═══════════════════════ SECTION 1: TEXT ═══════════════════════ -->
+  <section class="panel" id="panelText">
+    <div class="panel-label">01 — TEXT</div>
+
+    <div class="text-input-area">
+      <textarea id="inputText" placeholder="Text hier eingeben …" spellcheck="false"></textarea>
+      <div class="text-actions">
+        <label class="btn-secondary upload-btn">
+          <span>PDF hochladen</span>
+          <input type="file" id="pdfUpload" accept=".pdf,.txt" hidden>
+        </label>
+        <span id="charCount" class="char-count">0 Zeichen</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 2: TEXTVERARBEITUNG ═══════════════════════ -->
+  <section class="panel" id="panelProcessing">
+    <div class="panel-label">02 — TEXTVERARBEITUNG</div>
+
+    <div class="processing-mode-grid">
+      <label class="proc-card">
+        <input type="radio" name="processingMode" value="direct" checked>
+        <div class="proc-card-inner">
+          <span class="proc-icon">▶</span>
+          <span class="proc-name">Direkt vorlesen</span>
+          <span class="proc-desc">Text wird 1:1 gesprochen, kein LLM</span>
+        </div>
+      </label>
+      <label class="proc-card">
+        <input type="radio" name="processingMode" value="llm">
+        <div class="proc-card-inner">
+          <span class="proc-icon">✦</span>
+          <span class="proc-name">KI-Aufbereitung</span>
+          <span class="proc-desc">Text wird vom LLM transformiert</span>
+        </div>
+      </label>
+    </div>
+
+    <!-- LLM-Aufbereitung Optionen -->
+    <div id="llmProcessingOptions" style="display:none; margin-top:16px">
+      <label class="field-label">Aufbereitungs-Prompt</label>
+      <div class="prompt-preset-grid" id="promptPresetGrid">
+        <button class="prompt-preset-btn active" data-preset="podcast">
+          <span class="preset-icon">🎙</span> Podcast
+        </button>
+        <button class="prompt-preset-btn" data-preset="discussion">
+          <span class="preset-icon">💬</span> Diskussion
+        </button>
+        <button class="prompt-preset-btn" data-preset="hoerspiel">
+          <span class="preset-icon">🎭</span> Hörspiel
+        </button>
+        <button class="prompt-preset-btn" data-preset="erklaerung">
+          <span class="preset-icon">🔍</span> Erklärung
+        </button>
+        <button class="prompt-preset-btn" data-preset="zusammenfassung">
+          <span class="preset-icon">📋</span> Zusammenfassung
+        </button>
+        <button class="prompt-preset-btn" data-preset="nachrichten">
+          <span class="preset-icon">📰</span> Nachrichtensendung
+        </button>
+        <button class="prompt-preset-btn" data-preset="emotionen">
+          <span class="preset-icon">🎭</span> Emotionen
+        </button>
+        <button class="prompt-preset-btn" data-preset="custom">
+          <span class="preset-icon">✏</span> Eigener Prompt
+        </button>
+      </div>
+      <div id="customPromptArea" style="display:none; margin-top:10px">
+        <label class="field-label">Eigener System-Prompt</label>
+        <textarea id="customPromptText" class="text-field" rows="4"
+          placeholder="Schreibe einen System-Prompt für den LLM. Das Ergebnis muss ein JSON-Array mit Objekten { sprecher, emotion_instruction, text } sein."></textarea>
+      </div>
+      <div id="promptPreview" class="prompt-preview-box" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 3: STIL ═══════════════════════ -->
+  <section class="panel" id="panelStyle">
+    <div class="panel-label">03 — AUSGABESTIL</div>
+
+    <div class="style-grid">
+      <label class="style-card">
+        <input type="radio" name="outputStyle" value="single" checked>
+        <div class="style-card-inner">
+          <span class="style-icon">👤</span>
+          <span class="style-name">Einzelsprecher</span>
+          <span class="style-desc">Linear, ein Sprecher</span>
+        </div>
+      </label>
+      <label class="style-card">
+        <input type="radio" name="outputStyle" value="duo">
+        <div class="style-card-inner">
+          <span class="style-icon">👥</span>
+          <span class="style-name">Duo</span>
+          <span class="style-desc">Zwei Stimmen im Wechsel</span>
+        </div>
+      </label>
+      <label class="style-card">
+        <input type="radio" name="outputStyle" value="discussion">
+        <div class="style-card-inner">
+          <span class="style-icon">💬</span>
+          <span class="style-name">Diskussion</span>
+          <span class="style-desc">Kontrovers, mehrere</span>
+        </div>
+      </label>
+      <label class="style-card">
+        <input type="radio" name="outputStyle" value="audiobook">
+        <div class="style-card-inner">
+          <span class="style-icon">📖</span>
+          <span class="style-name">Hörbuch / Hörspiel</span>
+          <span class="style-desc">Erzähler + Charaktere</span>
+        </div>
+      </label>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 4: SPRECHER ═══════════════════════ -->
+  <section class="panel" id="panelSpeakers">
+    <div class="panel-label">04 — SPRECHER</div>
+    <div id="speakerSlots"></div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 5: AUDIO-UMGEBUNG ═══════════════════════ -->
+  <section class="panel" id="panelAudio">
+    <div class="panel-label">05 — AUDIO-UMGEBUNG</div>
+
+    <div class="audio-env-grid">
+
+      <div class="audio-env-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="useIntro">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Intro / Jingle</span>
+        </label>
+        <div class="env-file-selector" id="introSelector">
+          <select id="introFile" class="select-field"><option value="">— Datei wählen —</option></select>
+          <button class="btn-refresh" data-target="intro" title="Liste neu laden">↻</button>
+        </div>
+      </div>
+
+      <div class="audio-env-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="useAtmosphere">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Hintergrundatmosphäre</span>
+        </label>
+        <div class="env-file-selector" id="atmosphereSelector">
+          <select id="atmosphereFile" class="select-field"><option value="">— Datei wählen —</option></select>
+          <button class="btn-refresh" data-target="atmosphere" title="Liste neu laden">↻</button>
+          <div class="volume-row">
+            <span class="vol-label">Vol</span>
+            <input type="range" id="atmosphereVolume" min="0" max="100" value="20" class="volume-slider">
+            <span id="atmosphereVolumeVal" class="vol-value">20%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="audio-env-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="useOutro">
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Outro</span>
+        </label>
+        <div class="env-file-selector" id="outroSelector">
+          <select id="outroFile" class="select-field"><option value="">— Datei wählen —</option></select>
+          <button class="btn-refresh" data-target="outro" title="Liste neu laden">↻</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 6: LLM ═══════════════════════ -->
+  <section class="panel" id="panelLLM">
+    <div class="panel-label">06 — LLM-BACKEND</div>
+
+    <div class="llm-grid">
+      <label class="llm-card">
+        <input type="radio" name="llmBackend" value="deepseek" checked>
+        <div class="llm-card-inner">
+          <span class="llm-name">DeepSeek</span>
+          <span class="llm-desc">Cloud · API-Key erforderlich</span>
+        </div>
+      </label>
+      <label class="llm-card">
+        <input type="radio" name="llmBackend" value="ollama">
+        <div class="llm-card-inner">
+          <span class="llm-name">Ollama (lokal)</span>
+          <span class="llm-desc">Lokal · kein API-Key</span>
+        </div>
+      </label>
+    </div>
+
+    <div id="deepseekConfig" class="llm-config">
+      <label class="field-label">DeepSeek API-Key</label>
+      <input type="password" id="deepseekKey" class="text-field" placeholder="sk-…">
+      <label class="field-label" style="margin-top:10px">Modell</label>
+      <input type="text" id="deepseekModel" class="text-field" value="deepseek-chat">
+    </div>
+
+    <div id="ollamaConfig" class="llm-config" style="display:none">
+      <label class="field-label">Ollama Endpoint</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="ollamaEndpoint" class="text-field" value="http://localhost:11434" style="flex:1">
+        <button class="btn-refresh" id="btnRefreshOllamaModels" title="Modelle neu laden">↻</button>
+      </div>
+      <label class="field-label" style="margin-top:10px">Modell</label>
+      <select id="ollamaModel" class="select-field">
+        <option value="">— Modell wählen —</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ SECTION 7: GENERIERUNG ═══════════════════════ -->
+  <section class="panel panel-action" id="panelGenerate">
+    <button class="btn-primary btn-generate" id="btnGenerate">
+      <span class="btn-icon-left">▶</span> GENERIERUNG STARTEN
+    </button>
+
+    <div class="progress-area" id="progressArea" style="display:none">
+      <div class="progress-status" id="progressStatus">Initialisiere …</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+      <div class="progress-detail" id="progressDetail"></div>
+    </div>
+
+    <div class="output-area" id="outputArea" style="display:none">
+      <div class="output-label">✓ FERTIG</div>
+      <a id="downloadLink" class="btn-download" href="#" download>⬇ Audiodatei herunterladen</a>
+      <button id="openOutputDir" class="btn-secondary btn-open-dir" onclick="openOutputFolder()">📁 Ausgabeordner öffnen</button>
+    </div>
+
+    <div class="error-area" id="errorArea" style="display:none">
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════ EINSTELLUNGEN MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="modalSettings" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <span>⚙ Einstellungen</span>
+      <button class="btn-close" id="btnCloseSettings">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Qwen TTS</div>
+        <label class="field-label">Python-Executable (venv)</label>
+        <input type="text" id="settingPythonBin" class="text-field" placeholder="/opt/qwen-tts/venv/bin/python">
+        <label class="field-label" style="margin-top:10px">TTS-Script (tts_generate.py)</label>
+        <input type="text" id="settingTtsScript" class="text-field" placeholder="/opt/qwen-tts/tts_generate.py">
+        <label class="field-label" style="margin-top:10px">Modell-Pfad (CustomVoice)</label>
+        <input type="text" id="settingModelCustom" class="text-field" placeholder="/models/Qwen3-TTS-12Hz-1.7B-CustomVoice">
+        <label class="field-label" style="margin-top:10px">Modell-Pfad (Clone/Base)</label>
+        <input type="text" id="settingModelBase" class="text-field" placeholder="/models/Qwen3-TTS-12Hz-1.7B-Base">
+        <label class="field-label" style="margin-top:10px">Tokenizer-Pfad</label>
+        <input type="text" id="settingTokenizer" class="text-field" placeholder="/models/Qwen3-TTS-Tokenizer-12Hz">
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Verzeichnisse</div>
+        <label class="field-label">Preset-Stimmen Verzeichnis</label>
+        <input type="text" id="settingVoicesDir" class="text-field" placeholder="/audio/voices">
+        <label class="field-label" style="margin-top:10px">Atmosphäre-Verzeichnis</label>
+        <input type="text" id="settingAtmosphereDir" class="text-field" placeholder="/audio/atmosphere">
+        <label class="field-label" style="margin-top:10px">Intro-Verzeichnis</label>
+        <input type="text" id="settingIntroDir" class="text-field" placeholder="/audio/intros">
+        <label class="field-label" style="margin-top:10px">Outro-Verzeichnis</label>
+        <input type="text" id="settingOutroDir" class="text-field" placeholder="/audio/outros">
+        <label class="field-label" style="margin-top:10px">Ausgabe-Verzeichnis</label>
+        <input type="text" id="settingOutputDir" class="text-field" placeholder="/audio/output">
+        <label class="field-label" style="margin-top:10px">Temp-Verzeichnis</label>
+        <input type="text" id="settingTmpDir" class="text-field" placeholder="/tmp/qwen-tts-ui">
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Sprache</div>
+        <label class="field-label">TTS-Sprache</label>
+        <select id="settingLanguage" class="select-field">
+          <option value="German">Deutsch</option>
+          <option value="English">Englisch</option>
+          <option value="French">Französisch</option>
+          <option value="Spanish">Spanisch</option>
+          <option value="Italian">Italienisch</option>
+        </select>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="btnResetSettings" title="Alle Einstellungen und gespeicherten Formulardaten zurücksetzen">↺ Zurücksetzen</button>
+      <button class="btn-secondary" id="btnSaveSettings">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ HILFE-MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="modalHelp" style="display:none">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <span>? Anleitung</span>
+      <button class="btn-close" id="btnCloseHelp">✕</button>
+    </div>
+    <div class="modal-body help-body">
+
+      <div class="help-section">
+        <div class="help-section-title">Kurzübersicht</div>
+        <ol class="help-steps">
+          <li>Text eingeben oder PDF hochladen</li>
+          <li>Ausgabestil wählen (Einzelsprecher, Duo, Diskussion, Hörbuch)</li>
+          <li>Sprecher konfigurieren — Preset-Stimme oder eigene Voice Clone</li>
+          <li>Optional: Intro, Atmosphäre, Outro aktivieren</li>
+          <li>LLM-Backend wählen und <strong>GENERIERUNG STARTEN</strong></li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Preset-Stimmen</div>
+        <p>Preset-Stimmen sind fest im Modell eingebaut. Verfügbare Namen:</p>
+        <code class="help-code">aiden, chelsie, emma, ethan, harper, olivia, william, zoe</code>
+        <p style="margin-top:8px">Vollständige Liste im Terminal: <code>faster-qwen3-tts custom --list-speakers</code></p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Eigene Stimmen hinzufügen (Voice Clone)</div>
+        <p>Lege zwei Dateien in das Voices-Verzeichnis
+          <code id="helpVoicesDir" class="help-code"></code>
+        </p>
+        <ol class="help-steps">
+          <li>Eine Audiodatei (WAV oder MP3) mit 5–30 Sekunden sauberer Sprache ohne Hintergrundgeräusche, z.&nbsp;B. <code>MeineStimme.wav</code></li>
+          <li>Eine Textdatei mit dem <strong>exakt gesprochenen Inhalt</strong> der Audiodatei, gleicher Dateiname mit <code>.txt</code>-Endung: <code>MeineStimme.txt</code></li>
+        </ol>
+        <p>Die Stimme erscheint nach dem nächsten Seitenaufruf (oder ↻-Klick) im Voice-Clone-Dropdown. Das Transkript wird automatisch vorausgefüllt.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Intros, Outros, Atmosphären hinzufügen</div>
+        <table class="help-table">
+          <tr><th>Typ</th><th>Verzeichnis</th><th>Format</th></tr>
+          <tr><td>Intros</td><td id="helpIntroDir" class="help-code-cell"></td><td>MP3 / WAV</td></tr>
+          <tr><td>Outros</td><td id="helpOutroDir" class="help-code-cell"></td><td>MP3 / WAV</td></tr>
+          <tr><td>Atmosphären</td><td id="helpAtmDir" class="help-code-cell"></td><td>MP3 / WAV (wird geloopt)</td></tr>
+        </table>
+        <p style="margin-top:8px">Dateien einfach in das jeweilige Verzeichnis kopieren, danach ↻ klicken.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Ausgabeverzeichnis</div>
+        <p>Fertige Podcasts landen als <code>podcast_YYYYMMDD_HHMMSS.mp3</code> in:</p>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+          <code id="helpOutputDir" class="help-code" style="flex:1"></code>
+          <a id="helpOpenOutputDir" href="#" target="_blank" class="btn-secondary" style="white-space:nowrap">📁 In Nemo öffnen</a>
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Emotionssteuerung</div>
+        <p>Emotionen werden als natürlichsprachliche Anweisung dem Text vorangestellt, z.&nbsp;B.:</p>
+        <code class="help-code">Sprich fröhlich und energetisch: Der heutige Tag war…</code>
+        <p style="margin-top:6px">Bei Voice-Clone-Sprechern ist die Emotionsauswahl deaktiviert (Modelleinschränkung).</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Vorschau</div>
+        <p>Jeder Sprecher-Slot hat einen <strong>▶ Vorschau</strong>-Button. Er generiert den Satz <em>„Dies ist ein Testsatz."</em> mit den aktuellen Sprecher-Einstellungen und spielt ihn direkt ab. Die Generierung dauert je nach Hardware 5–30 Sekunden.</p>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title">Einstellungen zurücksetzen</div>
+        <p>Der Button <strong>↺ Zurücksetzen</strong> in den Einstellungen löscht alle gespeicherten Pfade, das LLM-Backend und alle Sprecher-Konfigurationen. Die Seite wird danach neu geladen.</p>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btnCloseHelp2">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

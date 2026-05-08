@@ -1,0 +1,1 @@
+Webbasierte Plattform zur Erstellung von Podcasts, Hörspielen und Voice-Inhalten mit vielfältigen TTS-Stimmen auf Basis von Qwen TTS.
